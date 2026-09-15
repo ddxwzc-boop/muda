@@ -1,0 +1,15 @@
+name: sys.symbol whitelist vs min SDK
+
+on:
+  pull_request:
+  push:
+    branches:
+      - dev
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check NativeIcon mapping targets exist in min SDK 5.0.0(12)
+        run: python3 scripts/check-sys-symbols.py
