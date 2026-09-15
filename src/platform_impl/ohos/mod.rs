@@ -538,8 +538,14 @@ impl MenuChild {
 /// Map NativeIcon variants to OHOS system symbol resource names.
 ///
 /// Names are validated against the SDK's compile-time system resource table
-/// (`sysResource.js`, `sys.symbol` section), which governs whether `$r()` compiles —
-/// all 56 variants map to an existing symbol, so every NativeIcon renders an icon.
+/// (`sysResource.js`, `sys.symbol` section), which governs whether `$r()` compiles.
+/// All 56 variants map to real symbol names, but two of them (`person_3`,
+/// `circle_fill`) only exist from API 20 (HarmonyOS 6.0.0) onwards — they are absent
+/// from the minimum supported SDK 5.0.0(12) table (5.1.0 carries them as private
+/// entries, which the SDK generator skips). The ArkTS whitelist therefore has no
+/// `$r()` case for them, so `Everyone` and `StatusAvailable` cross the bridge but
+/// render no icon (fall-through `default` → null). Re-enable by adding the two cases
+/// once the compatibleSdkVersion floor reaches API 20.
 ///
 /// The names follow the SF-Symbols-like conventions of the OHOS symbol set. macOS-only
 /// concepts without a direct equivalent use the closest visual analog:
@@ -547,12 +553,14 @@ impl MenuChild {
 /// - FolderSmart → `folder_badge_eye` (auto-watched folder; no folder+gear symbol exists)
 /// - FolderBurnable → `flame` (no folder+flame composite)
 /// - IChatTheater → `video_fill`, MobileMe → `cloud`, SmartBadge → `wand_and_stars`,
-///   Status* → filled/half/empty circles, StopProgress* → `onehand` (raised hand)
+///   Status* → filled/half/empty circles (`StatusAvailable` → `circle_fill` is the
+///   API-20+ exception above), StopProgress* → `onehand` (raised hand)
 ///
 /// The ArkTS side (MenuBarComponent.nativeIconResource) needs a matching `$r()` case
 /// per entry — keep both sides in sync. When adding or changing a mapping, look the
 /// name up in the SDK symbol table first: a `$r()` literal that is not in
-/// `sysResource.js` fails the ArkTS build.
+/// `sysResource.js` fails the ArkTS build — and the table is per-SDK-version, so
+/// validate against the minimum supported SDK (5.0.0(12)), not just the build SDK.
 fn native_icon_to_ohos(icon: NativeIcon) -> Option<&'static str> {
     match icon {
         NativeIcon::Add => Some("sys.symbol.plus"),
@@ -564,6 +572,7 @@ fn native_icon_to_ohos(icon: NativeIcon) -> Option<&'static str> {
         NativeIcon::ColumnView => Some("sys.symbol.rectangle_split_3x1"),
         NativeIcon::Computer => Some("sys.symbol.monitor_fill"),
         NativeIcon::EnterFullScreen => Some("sys.symbol.fullscreen"),
+        // API 20+ only — missing in min SDK 5.0.0(12); the ArkTS whitelist renders it as no icon.
         NativeIcon::Everyone => Some("sys.symbol.person_3"),
         NativeIcon::ExitFullScreen => Some("sys.symbol.arrow_down_right_and_arrow_up_left"),
         NativeIcon::FlowView => Some("sys.symbol.square_stack_3d"),
@@ -599,6 +608,7 @@ fn native_icon_to_ohos(icon: NativeIcon) -> Option<&'static str> {
         NativeIcon::Share => Some("sys.symbol.share"),
         NativeIcon::Slideshow => Some("sys.symbol.play_video"),
         NativeIcon::SmartBadge => Some("sys.symbol.wand_and_stars"),
+        // API 20+ only — missing in min SDK 5.0.0(12); the ArkTS whitelist renders it as no icon.
         NativeIcon::StatusAvailable => Some("sys.symbol.circle_fill"),
         NativeIcon::StatusNone => Some("sys.symbol.circle"),
         NativeIcon::StatusPartiallyAvailable => Some("sys.symbol.circle_lefthalf_inset_filled"),
