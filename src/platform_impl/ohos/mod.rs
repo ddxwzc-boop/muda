@@ -537,26 +537,80 @@ impl MenuChild {
 
 /// Map NativeIcon variants to OHOS system symbol resource names.
 ///
-/// Only NativeIcon variants with an OHOS system symbol equivalent are mapped.
 /// Names are validated against the SDK's compile-time system resource table
-/// (`sysResource.js`, `sys.symbol` section), which governs whether `$r()` compiles.
+/// (`sysResource.js`, `sys.symbol` section), which governs whether `$r()` compiles —
+/// all 56 variants map to an existing symbol, so every NativeIcon renders an icon.
 ///
-/// Validated symbols: ohos_star (Add), ohos_lock (LockLocked), ohos_wifi (Network),
-/// folder (Folder — no `ohos_` prefix; `ohos_folder` does not exist).
-/// All other variants map to `None` (no icon), consistent with Windows/Linux behavior
-/// where unmapped NativeIcons render without an icon.
+/// The names follow the SF-Symbols-like conventions of the OHOS symbol set. macOS-only
+/// concepts without a direct equivalent use the closest visual analog:
+/// - Add → `plus` (the previous `ohos_star` was a validated-but-semantic placeholder)
+/// - FolderSmart → `folder_badge_eye` (auto-watched folder; no folder+gear symbol exists)
+/// - FolderBurnable → `flame` (no folder+flame composite)
+/// - IChatTheater → `video_fill`, MobileMe → `cloud`, SmartBadge → `wand_and_stars`,
+///   Status* → filled/half/empty circles, StopProgress* → `onehand` (raised hand)
 ///
-/// When more symbols are needed, look them up in the SDK symbol table first
-/// (`sysResource.js` symbol section), then extend both this mapping and the ArkTS
-/// side (MenuBarComponent.nativeIconResource), which needs a matching `$r()` case.
+/// The ArkTS side (MenuBarComponent.nativeIconResource) needs a matching `$r()` case
+/// per entry — keep both sides in sync. When adding or changing a mapping, look the
+/// name up in the SDK symbol table first: a `$r()` literal that is not in
+/// `sysResource.js` fails the ArkTS build.
 fn native_icon_to_ohos(icon: NativeIcon) -> Option<&'static str> {
     match icon {
-        NativeIcon::Add => Some("sys.symbol.ohos_star"),
-        NativeIcon::LockLocked => Some("sys.symbol.ohos_lock"),
-        NativeIcon::Network => Some("sys.symbol.ohos_wifi"),
+        NativeIcon::Add => Some("sys.symbol.plus"),
+        NativeIcon::Advanced => Some("sys.symbol.slider_horizontal_2_1"),
+        NativeIcon::Bluetooth => Some("sys.symbol.bluetooth"),
+        NativeIcon::Bookmarks => Some("sys.symbol.bookmark"),
+        NativeIcon::Caution => Some("sys.symbol.exclamationmark_triangle"),
+        NativeIcon::ColorPanel => Some("sys.symbol.paintbrush_pointed"),
+        NativeIcon::ColumnView => Some("sys.symbol.rectangle_split_3x1"),
+        NativeIcon::Computer => Some("sys.symbol.monitor_fill"),
+        NativeIcon::EnterFullScreen => Some("sys.symbol.fullscreen"),
+        NativeIcon::Everyone => Some("sys.symbol.person_3"),
+        NativeIcon::ExitFullScreen => Some("sys.symbol.arrow_down_right_and_arrow_up_left"),
+        NativeIcon::FlowView => Some("sys.symbol.square_stack_3d"),
         NativeIcon::Folder => Some("sys.symbol.folder"),
-        // All other variants: no OHOS system symbol equivalent
-        _ => None,
+        NativeIcon::FolderBurnable => Some("sys.symbol.flame"),
+        NativeIcon::FolderSmart => Some("sys.symbol.folder_badge_eye"),
+        NativeIcon::FollowLinkFreestanding => Some("sys.symbol.link"),
+        NativeIcon::FontPanel => Some("sys.symbol.textformat"),
+        NativeIcon::GoLeft => Some("sys.symbol.chevron_left"),
+        NativeIcon::GoRight => Some("sys.symbol.chevron_right"),
+        NativeIcon::Home => Some("sys.symbol.house"),
+        NativeIcon::IChatTheater => Some("sys.symbol.video_fill"),
+        NativeIcon::IconView => Some("sys.symbol.square_grid_2x2"),
+        NativeIcon::Info => Some("sys.symbol.info_circle"),
+        NativeIcon::InvalidDataFreestanding => Some("sys.symbol.nosign"),
+        NativeIcon::LeftFacingTriangle => Some("sys.symbol.triangleshape_left"),
+        NativeIcon::ListView => Some("sys.symbol.list_bullet"),
+        NativeIcon::LockLocked => Some("sys.symbol.ohos_lock"),
+        NativeIcon::LockUnlocked => Some("sys.symbol.lock_open"),
+        NativeIcon::MenuMixedState => Some("sys.symbol.minus"),
+        NativeIcon::MenuOnState => Some("sys.symbol.checkmark"),
+        NativeIcon::MobileMe => Some("sys.symbol.cloud"),
+        NativeIcon::MultipleDocuments => Some("sys.symbol.rectangle_stack"),
+        NativeIcon::Network => Some("sys.symbol.ohos_wifi"),
+        NativeIcon::Path => Some("sys.symbol.route"),
+        NativeIcon::PreferencesGeneral => Some("sys.symbol.gearshape"),
+        NativeIcon::QuickLook => Some("sys.symbol.eye"),
+        NativeIcon::RefreshFreestanding => Some("sys.symbol.arrow_clockwise"),
+        NativeIcon::Refresh => Some("sys.symbol.arrow_clockwise"),
+        NativeIcon::Remove => Some("sys.symbol.minus_circle"),
+        NativeIcon::RevealFreestanding => Some("sys.symbol.magnifyingglass"),
+        NativeIcon::RightFacingTriangle => Some("sys.symbol.triangleshape_fill"),
+        NativeIcon::Share => Some("sys.symbol.share"),
+        NativeIcon::Slideshow => Some("sys.symbol.play_video"),
+        NativeIcon::SmartBadge => Some("sys.symbol.wand_and_stars"),
+        NativeIcon::StatusAvailable => Some("sys.symbol.circle_fill"),
+        NativeIcon::StatusNone => Some("sys.symbol.circle"),
+        NativeIcon::StatusPartiallyAvailable => Some("sys.symbol.circle_lefthalf_inset_filled"),
+        NativeIcon::StatusUnavailable => Some("sys.symbol.xmark_circle"),
+        NativeIcon::StopProgressFreestanding => Some("sys.symbol.onehand"),
+        NativeIcon::StopProgress => Some("sys.symbol.onehand"),
+        NativeIcon::TrashEmpty => Some("sys.symbol.ohos_trash"),
+        NativeIcon::TrashFull => Some("sys.symbol.trash_fill"),
+        NativeIcon::User => Some("sys.symbol.person"),
+        NativeIcon::UserAccounts => Some("sys.symbol.person_badge_checkmark"),
+        NativeIcon::UserGroup => Some("sys.symbol.person_2"),
+        NativeIcon::UserGuest => Some("sys.symbol.person_badge_nosign"),
     }
 }
 
@@ -1111,8 +1165,9 @@ mod tests {
     // ─── native_icon_to_ohos ──────────────────────────────────────────────
 
     #[test]
-    fn native_icon_add_maps_to_ohos_star() {
-        assert_eq!(native_icon_to_ohos(NativeIcon::Add), Some("sys.symbol.ohos_star"));
+    fn native_icon_add_maps_to_plus() {
+        // `plus` replaced the early `ohos_star` placeholder (issue #112)
+        assert_eq!(native_icon_to_ohos(NativeIcon::Add), Some("sys.symbol.plus"));
     }
 
     #[test]
@@ -1132,34 +1187,98 @@ mod tests {
     }
 
     #[test]
-    fn native_icon_unmapped_returns_none() {
-        // Variants without an OHOS system symbol equivalent return None
-        assert_eq!(native_icon_to_ohos(NativeIcon::Bluetooth), None);
-        assert_eq!(native_icon_to_ohos(NativeIcon::Bookmarks), None);
-        assert_eq!(native_icon_to_ohos(NativeIcon::Caution), None);
-        assert_eq!(native_icon_to_ohos(NativeIcon::TrashEmpty), None);
+    fn native_icon_all_variants_map_to_a_symbol() {
+        // The mapping is total: every NativeIcon variant must produce an icon
+        // name that exists in the SDK symbol table (and has a matching `$r()`
+        // case in MenuBarComponent.nativeIconResource on the ArkTS side).
+        let all = [
+            NativeIcon::Add,
+            NativeIcon::Advanced,
+            NativeIcon::Bluetooth,
+            NativeIcon::Bookmarks,
+            NativeIcon::Caution,
+            NativeIcon::ColorPanel,
+            NativeIcon::ColumnView,
+            NativeIcon::Computer,
+            NativeIcon::EnterFullScreen,
+            NativeIcon::Everyone,
+            NativeIcon::ExitFullScreen,
+            NativeIcon::FlowView,
+            NativeIcon::Folder,
+            NativeIcon::FolderBurnable,
+            NativeIcon::FolderSmart,
+            NativeIcon::FollowLinkFreestanding,
+            NativeIcon::FontPanel,
+            NativeIcon::GoLeft,
+            NativeIcon::GoRight,
+            NativeIcon::Home,
+            NativeIcon::IChatTheater,
+            NativeIcon::IconView,
+            NativeIcon::Info,
+            NativeIcon::InvalidDataFreestanding,
+            NativeIcon::LeftFacingTriangle,
+            NativeIcon::ListView,
+            NativeIcon::LockLocked,
+            NativeIcon::LockUnlocked,
+            NativeIcon::MenuMixedState,
+            NativeIcon::MenuOnState,
+            NativeIcon::MobileMe,
+            NativeIcon::MultipleDocuments,
+            NativeIcon::Network,
+            NativeIcon::Path,
+            NativeIcon::PreferencesGeneral,
+            NativeIcon::QuickLook,
+            NativeIcon::RefreshFreestanding,
+            NativeIcon::Refresh,
+            NativeIcon::Remove,
+            NativeIcon::RevealFreestanding,
+            NativeIcon::RightFacingTriangle,
+            NativeIcon::Share,
+            NativeIcon::Slideshow,
+            NativeIcon::SmartBadge,
+            NativeIcon::StatusAvailable,
+            NativeIcon::StatusNone,
+            NativeIcon::StatusPartiallyAvailable,
+            NativeIcon::StatusUnavailable,
+            NativeIcon::StopProgressFreestanding,
+            NativeIcon::StopProgress,
+            NativeIcon::TrashEmpty,
+            NativeIcon::TrashFull,
+            NativeIcon::User,
+            NativeIcon::UserAccounts,
+            NativeIcon::UserGroup,
+            NativeIcon::UserGuest,
+        ];
+        assert_eq!(all.len(), 56, "NativeIcon variant count drifted — extend the mapping");
+        for icon in all {
+            let Some(name) = native_icon_to_ohos(icon) else {
+                panic!("NativeIcon::{icon:?} has no sys.symbol mapping");
+            };
+            assert!(name.starts_with("sys.symbol."), "{icon:?} -> {name}");
+        }
     }
 
     #[test]
     fn menu_child_new_native_icon_maps_icon() {
         let child = MenuChild::new_native_icon("Add", true, Some(NativeIcon::Add), None, None);
         let data = child.to_menu_item_data();
-        assert_eq!(data.native_icon, Some("sys.symbol.ohos_star".to_string()));
+        assert_eq!(data.native_icon, Some("sys.symbol.plus".to_string()));
     }
 
     #[test]
-    fn menu_child_new_native_icon_unmapped_is_none() {
+    fn menu_child_new_native_icon_maps_extended_variant() {
+        // Issue #112: previously-unmapped variants now render an icon
         let child = MenuChild::new_native_icon("Bluetooth", true, Some(NativeIcon::Bluetooth), None, None);
         let data = child.to_menu_item_data();
-        assert_eq!(data.native_icon, None);
+        assert_eq!(data.native_icon, Some("sys.symbol.bluetooth".to_string()));
     }
 
     #[test]
     fn menu_child_set_native_icon_updates_mapping() {
         let mut child = MenuChild::new_native_icon("X", true, Some(NativeIcon::Bluetooth), None, None);
-        assert_eq!(child.native_icon, None);
+        assert_eq!(child.native_icon, Some("sys.symbol.bluetooth".to_string()));
         child.set_native_icon(Some(NativeIcon::Add));
-        assert_eq!(child.native_icon, Some("sys.symbol.ohos_star".to_string()));
+        assert_eq!(child.native_icon, Some("sys.symbol.plus".to_string()));
     }
 
     #[test]
@@ -1434,8 +1553,14 @@ mod tests {
             .unwrap()
             .insert("toggle_me".to_string(), flag.clone());
         assert_eq!(toggle_check_item("toggle_me"), Some(true));
-        assert_eq!(toggle_check_item("toggle_me"), Some(false));
+        // The registered Arc is the single state source — it must observe the
+        // flip, not just the return value. (Asserted BETWEEN the toggles: two
+        // toggles end at false, so a post-hoc `assert!(flag)` can never hold —
+        // this test had exactly that bug since #86 and only failed now that
+        // the ohos-gated suite actually runs on device.)
         assert!(flag.load(Ordering::Relaxed));
+        assert_eq!(toggle_check_item("toggle_me"), Some(false));
+        assert!(!flag.load(Ordering::Relaxed));
         *CHECK_ITEMS.lock().unwrap() = saved;
     }
 
