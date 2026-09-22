@@ -556,6 +556,10 @@ impl MenuChild {
 ///   Status* → filled/half/empty circles (`StatusAvailable` → `circle_fill` is the
 ///   API-20+ exception above), StopProgress* → `onehand` (raised hand)
 ///
+/// The Status* family's color semantics (green/clear/yellow/red, see `icon.rs`) are
+/// restored on the ArkTS rendering side via fontColor (`NATIVE_ICON_FONT_COLOR` in
+/// openharmony-ability's MenuBarComponent) — the Rust side only maps the shape.
+///
 /// The ArkTS side (MenuBarComponent.nativeIconResource) needs a matching `$r()` case
 /// per entry — keep both sides in sync. When adding or changing a mapping, look the
 /// name up in the SDK symbol table first: a `$r()` literal that is not in
@@ -1198,9 +1202,15 @@ mod tests {
 
     #[test]
     fn native_icon_all_variants_map_to_a_symbol() {
-        // The mapping is total: every NativeIcon variant must produce an icon
-        // name that exists in the SDK symbol table (and has a matching `$r()`
-        // case in MenuBarComponent.nativeIconResource on the ArkTS side).
+        // Tripwire, not a coverage guarantee: variant coverage is enforced by
+        // the exhaustive `match` in `native_icon_to_ohos` alone — a new
+        // NativeIcon variant fails compilation until a mapping arm is added,
+        // but nothing forces it into this hand-written list. When the enum
+        // grows, extend both the match and this array. The `len()` assertion
+        // only catches edits to this array that forget to bump the count, and
+        // names are checked for the `sys.symbol.` prefix only — SDK-table
+        // membership and the matching ArkTS `$r()` case are verified
+        // out-of-band (see the `native_icon_to_ohos` docs).
         let all = [
             NativeIcon::Add,
             NativeIcon::Advanced,
@@ -1259,7 +1269,11 @@ mod tests {
             NativeIcon::UserGroup,
             NativeIcon::UserGuest,
         ];
-        assert_eq!(all.len(), 56, "NativeIcon variant count drifted — extend the mapping");
+        assert_eq!(
+            all.len(),
+            56,
+            "hand-written NativeIcon list drifted — sync it with the enum and the match in native_icon_to_ohos"
+        );
         for icon in all {
             let Some(name) = native_icon_to_ohos(icon) else {
                 panic!("NativeIcon::{icon:?} has no sys.symbol mapping");
