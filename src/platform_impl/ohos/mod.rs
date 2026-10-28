@@ -99,21 +99,16 @@ pub fn set_menu_client(client: openharmony_ability_plugin_menu::MenuClient) {
 // ─── Last bridge error (diagnostics for fire-and-forget calls) ───────────────
 // popup/refresh_menubar dispatch their bridge call to the worker thread and
 // cannot return its result without blocking the caller (see the worker docs
-// below). Instead, the worker caches the last failure here; the next
-// popup/refresh_menubar call surfaces it through its Result, and
+// below). The worker caches the last failure here, and
 // `muda::last_bridge_error()` exposes it for embedder (tauri) diagnostics.
+// The slot is diagnostics-only (last-wins, never cleared by reads): a stale
+// failure must not block or swallow the current call's dispatch.
 
 static LAST_BRIDGE_ERROR: Mutex<Option<String>> = Mutex::new(None);
 
 /// Returns the last OHOS menu bridge error (if any), without clearing it.
 pub fn last_bridge_error() -> Option<String> {
     LAST_BRIDGE_ERROR.lock().unwrap().clone()
-}
-
-/// Takes the pending bridge error, if any — used by popup/refresh_menubar to
-/// report the previous call's failure through their Result.
-fn take_last_bridge_error() -> Option<String> {
-    LAST_BRIDGE_ERROR.lock().unwrap().take()
 }
 
 /// Records a bridge failure from the worker thread.
@@ -335,9 +330,6 @@ impl Menu {
     }
 
     pub fn refresh_menubar(&self, window_id: &str) -> crate::Result<()> {
-        if let Some(err) = take_last_bridge_error() {
-            return Err(crate::Error::OhosBridgeError(err));
-        }
         init_menu_event_listener();
         // Same registration as the popup path: menubar check items must flip
         // the shared flags on click, or `CheckMenuItem::is_checked()` returns
@@ -370,17 +362,15 @@ impl Menu {
 ///
 /// Fire-and-forget: the call must NOT run on the main thread — block_on +
 /// receiver.await would deadlock the TSFN event loop (THREAD_BLOCK_6S) — so
-/// the worker caches any failure in `LAST_BRIDGE_ERROR`, which the next
-/// popup/refresh_menubar call surfaces through its Result.
+/// the worker caches any failure in `LAST_BRIDGE_ERROR`, exposed via
+/// `muda::last_bridge_error()` (diagnostics-only; a stale failure never
+/// blocks this dispatch).
 fn dispatch_popup(
     children: &[Rc<RefCell<MenuChild>>],
     x: Option<f64>,
     y: Option<f64>,
     window_id: &str,
 ) -> crate::Result<()> {
-    if let Some(err) = take_last_bridge_error() {
-        return Err(crate::Error::OhosBridgeError(err));
-    }
     init_menu_event_listener();
     collect_check_items(children);
     let json = serde_json::to_string(

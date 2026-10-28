@@ -252,9 +252,10 @@ pub fn set_on_menu_change<F: Fn() + Send + Sync + 'static>(handler: Option<F>) {
 ///
 /// `Menu::popup` and `refresh_menubar` dispatch their bridge call to a worker
 /// thread (fire-and-forget — blocking the caller would deadlock the TSFN event
-/// loop), so a failure cannot be returned synchronously; it is cached here and
-/// also surfaced through the `Result` of the next popup/refresh_menubar call.
-/// Intended for embedder (tauri) diagnostics.
+/// loop), so a failure cannot be returned synchronously; it is cached here
+/// (last-wins, never cleared by reads) for embedder (tauri) diagnostics —
+/// dispatch is infallible on OHOS and no longer surfaces bridge errors
+/// through its `Result`.
 #[cfg(target_env = "ohos")]
 pub use platform_impl::last_bridge_error;
 
